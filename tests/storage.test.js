@@ -2,14 +2,24 @@
 // Right click on the script name and hit "Run" to execute
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const secret = 'hello'
+const secretBytes = ethers.utils.formatBytes32String(secret)
 
-describe("Storage", function () {
+
+before(async function( ){
+  accounts = await ethers.Get
+})
+
   it("test initial value", async function () {
     const Storage = await ethers.getContractFactory("Storage");
     const storage = await Storage.deploy();
     await storage.deployed();
     console.log("storage deployed at:" + storage.address);
-    expect((await storage.retrieve()).toNumber()).to.equal(0);
+    expect((await storage.retrieve()).t
+    
+    
+    
+    Number()).to.equal(0);
   });
   it("test updating and retrieving updated value", async function () {
     const Storage = await ethers.getContractFactory("Storage");
@@ -20,4 +30,5 @@ describe("Storage", function () {
     await setValue.wait();
     expect((await storage2.retrieve()).toNumber()).to.equal(56);
   });
+
 });
