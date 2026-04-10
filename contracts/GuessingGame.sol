@@ -31,6 +31,12 @@ contract GuessingGame {
         _;
     }
 
+    function _stringToBytes32(string memory value) internal pure returns (bytes32 result) {
+        assembly {
+            result := mload(add(value, 32))
+        }
+    }
+
     constructor() {
         owner = msg.sender;
     }
@@ -66,9 +72,14 @@ contract GuessingGame {
         emit TokenPassed(old, to);
     }
 
-    function guess(string calldata plainSecret, uint256 requestedAmount, bytes32 newSecretHash) external onlyInitialized onlyTokenHolder {
+    function guess(string calldata plainSecret, uint256 requestedAmount, bytes32 newSecretHash)
+        external
+        onlyInitialized
+        onlyTokenHolder
+    {
         require(newSecretHash != bytes32(0), "INVALID_NEW_SECRET_HASH");
-        require(keccak256(abi.encodePacked(plainSecret)) == secretHash, "WRONG_GUESS");
+        bytes32 secretBytes = _stringToBytes32(plainSecret);
+        require(keccak256(abi.encodePacked(secretBytes)) == secretHash, "WRONG_GUESS");
         require(address(this).balance >= requestedAmount, "INSUFFICIENT_CONTRACT_BALANCE");
 
         secretHash = newSecretHash;
@@ -77,5 +88,13 @@ contract GuessingGame {
         require(ok, "PAYOUT_FAILED");
 
         emit GuessedCorrectly(msg.sender, requestedAmount, newSecretHash);
+    }
+
+    function ownerWithdraw(uint256 amount, address to) external onlyOwner {
+        require(to != address(0), "INVALID_TO");
+        require(address(this).balance >= amount, "INSUFFICIENT_CONTRACT_BALANCE");
+
+        (bool ok, ) = payable(to).call{value: amount}("");
+        require(ok, "WITHDRAW_FAILED");
     }
 }
