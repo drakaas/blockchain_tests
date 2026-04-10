@@ -27,5 +27,13 @@
         "file": "contracts/1_Storage.sol"
       }
     }
+  },
+  "contracts/GuessingGame.sol": {
+    "__sources__": {
+      "contracts/GuessingGame.sol": {
+        "content": "/*\n    Ce fichier ça sera pour notre contrat du projet du module 2 de blockchain \n*/",
+        "file": "contracts/GuessingGame.sol"
+      }
+    }
   }
 }
