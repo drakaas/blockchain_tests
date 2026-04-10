@@ -51,19 +51,11 @@ contract GuessingGame {
         tokenHolder = owner;
         emit Initialized(owner, secretHash, address(this).balance);
     }
-
+lastGuesser = msg
     function setTokenHolder(address holder) external onlyOwner {
         require(holder != address(0), "INVALID_TOKEN_HOLDER");
         tokenHolder = holder;
         emit TokenHolderSet(holder);
-    }
-
-    receive() external payable {
-        emit Deposit(msg.sender, msg.value);
-    }
-
-    function deposit() external payable {
-        emit Deposit(msg.sender, msg.value);
     }
 
     function passToken(address to) external onlyInitialized onlyTokenHolder {
@@ -95,12 +87,4 @@ contract GuessingGame {
 
         emit GuessedCorrectly(msg.sender, requestedAmount, newSecretHash);
     }
-
-    function ownerWithdraw(uint256 amount, address to) external onlyOwner {
-        require(to != address(0), "INVALID_TO");
-        require(address(this).balance >= amount, "INSUFFICIENT_CONTRACT_BALANCE");
-
-        (bool ok, ) = payable(to).call{value: amount}("");
-        require(ok, "WITHDRAW_FAILED");
-    }
-}
+}string calldata plainSecret, uint256 requestedAmount, bytes32 newSecretHash

@@ -41,6 +41,7 @@ describe before guess:
 
 
  */
+
 /* eslint-disable no-undef */
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
@@ -106,6 +107,34 @@ describe("GuessingGame", function () {
       ).to.be.revertedWith("INVALID_SECRET_HASH");
     });
 
+    it("should not be able to give token before init", async function () {
+      await expect(
+        contract.connect(owner).passToken(player1.address)
+      ).to.be.revertedWith("NOT_INITIALIZED");
+    });
+
+    it("should not change state if params are invalid (non-owner attempt)", async function () {
+      const initializedBefore = await contract.initialized();
+      const secretHashBefore  = await contract.secretHash();
+      const tokenHolderBefore = await contract.tokenHolder();
+      await expect(
+        contract.connect(player1).init(secretHash, { value: funds })
+      ).to.be.reverted;
+      expect(await contract.initialized()).to.equal(initializedBefore);
+      expect(await contract.secretHash()).to.equal(secretHashBefore);
+      expect(await contract.tokenHolder()).to.equal(tokenHolderBefore);
+    });
+
+    it("should not change state if called without funds", async function () {
+      const initializedBefore = await contract.initialized();
+      const balanceBefore     = await ethers.provider.getBalance(contract.address);
+      await expect(
+        contract.connect(owner).init(secretHash, { value: 0 })
+      ).to.be.reverted;
+      expect(await contract.initialized()).to.equal(initializedBefore);
+      expect(await ethers.provider.getBalance(contract.address)).to.equal(balanceBefore);
+    });
+
     it("should init correctly and update state", async function () {
       const oldBalance = await ethers.provider.getBalance(contract.address);
       await contract.connect(owner).init(secretHash, { value: funds });
@@ -120,6 +149,20 @@ describe("GuessingGame", function () {
       await expect(
         contract.connect(owner).init(secretHash, { value: funds })
       ).to.be.revertedWith("ALREADY_INITIALIZED");
+    });
+
+    it("should not change state if called again after initialized", async function () {
+      const initializedBefore = await contract.initialized();
+      const secretHashBefore  = await contract.secretHash();
+      const tokenHolderBefore = await contract.tokenHolder();
+      const balanceBefore     = await ethers.provider.getBalance(contract.address);
+      await expect(
+        contract.connect(owner).init(secretHash, { value: funds })
+      ).to.be.reverted;
+      expect(await contract.initialized()).to.equal(initializedBefore);
+      expect(await contract.secretHash()).to.equal(secretHashBefore);
+      expect(await contract.tokenHolder()).to.equal(tokenHolderBefore);
+      expect(await ethers.provider.getBalance(contract.address)).to.equal(balanceBefore);
     });
 
   });
@@ -144,6 +187,14 @@ describe("GuessingGame", function () {
       await expect(
         contract.connect(owner).passToken(ethers.constants.AddressZero)
       ).to.be.revertedWith("INVALID_TO");
+    });
+
+    it("should not change state if address is zero", async function () {
+      const tokenHolderBefore = await contract.tokenHolder();
+      await expect(
+        contract.connect(owner).passToken(ethers.constants.AddressZero)
+      ).to.be.reverted;
+      expect(await contract.tokenHolder()).to.equal(tokenHolderBefore);
     });
 
     it("should revert if passing to same address", async function () {
@@ -215,6 +266,22 @@ describe("GuessingGame", function () {
       ).to.be.revertedWith("WRONG_GUESS");
     });
 
+    it("should not change state if precondition fails", async function () {
+      const secretHashBefore  = await contract.secretHash();
+      const balanceBefore     = await ethers.provider.getBalance(contract.address);
+      const tokenHolderBefore = await contract.tokenHolder();
+      const ownerBefore       = await contract.owner();
+      const initializedBefore = await contract.initialized();
+      await expect(
+        contract.connect(player1).guess("wrongword", ethers.utils.parseEther("0.1"), newSecretHash)
+      ).to.be.reverted;
+      expect(await contract.secretHash()).to.equal(secretHashBefore);
+      expect(await ethers.provider.getBalance(contract.address)).to.equal(balanceBefore);
+      expect(await contract.tokenHolder()).to.equal(tokenHolderBefore);
+      expect(await contract.owner()).to.equal(ownerBefore);
+      expect(await contract.initialized()).to.equal(initializedBefore);
+    });
+
     it("should pay out player and reset secret on correct guess", async function () {
       const requested     = ethers.utils.parseEther("0.5");
       const balanceBefore = await ethers.provider.getBalance(player1.address);
@@ -227,10 +294,26 @@ describe("GuessingGame", function () {
       expect(await contract.secretHash()).to.equal(newSecretHash);
     });
 
+    it("should not change owner, tokenHolder or initialized after correct guess", async function () {
+      expect(await contract.owner()).to.equal(owner.address);
+      expect(await contract.tokenHolder()).to.equal(player1.address);
+      expect(await contract.initialized()).to.equal(true);
+    });
+
     it("should revert consecutive guess by same player", async function () {
       await expect(
         contract.connect(player1).guess(newSecret, ethers.utils.parseEther("0.1"), thirdSecretHash)
       ).to.be.revertedWith("NO_CONSECUTIVE_GUESS");
+    });
+
+    it("should not change state after consecutive guess attempt", async function () {
+      const secretHashBefore = await contract.secretHash();
+      const balanceBefore    = await ethers.provider.getBalance(contract.address);
+      await expect(
+        contract.connect(player1).guess(newSecret, ethers.utils.parseEther("0.1"), thirdSecretHash)
+      ).to.be.reverted;
+      expect(await contract.secretHash()).to.equal(secretHashBefore);
+      expect(await ethers.provider.getBalance(contract.address)).to.equal(balanceBefore);
     });
 
     it("should decrease contract balance after correct guess", async function () {
