@@ -22,6 +22,8 @@ before(async function () {
   await contract.deployed();
 });
 
+
+
 describe("GuessingGame", function () {
 
   it("should init the game with correct secret hash and funds", async function () {
