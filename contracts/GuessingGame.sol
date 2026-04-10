@@ -9,14 +9,12 @@ contract GuessingGame {
     address public tokenHolder;
     bytes32 public secretHash;
     bool public initialized;
-    uint256 public initialBalance;
 
-    event Initialized(address indexed owner, bytes32 indexed secretHash, uint256 initialBalance);
+    event Initialized(address indexed owner, bytes32 indexed secretHash, uint256 balance);
     event TokenHolderSet(address indexed tokenHolder);
     event TokenPassed(address indexed from, address indexed to);
     event GuessedCorrectly(address indexed player, uint256 amount, bytes32 indexed newSecretHash);
     event Deposit(address indexed from, uint256 amount);
-    event OwnerWithdrawal(address indexed to, uint256 amount);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "ONLY_OWNER");
@@ -43,7 +41,6 @@ contract GuessingGame {
         require(msg.value > 0, "INIT_REQUIRES_FUNDS");
         secretHash = initialSecretHash;
         initialized = true;
-        initialBalance = msg.value;
         tokenHolder = owner;
         emit Initialized(owner, secretHash, address(this).balance);
     }
@@ -80,13 +77,5 @@ contract GuessingGame {
         require(ok, "PAYOUT_FAILED");
 
         emit GuessedCorrectly(msg.sender, requestedAmount, newSecretHash);
-    }
-
-    function ownerWithdraw(uint256 amount, address payable to) external onlyOwner {
-        require(to != address(0), "INVALID_TO");
-        require(address(this).balance >= amount, "INSUFFICIENT_CONTRACT_BALANCE");
-        (bool ok, ) = to.call{value: amount}("");
-        require(ok, "WITHDRAW_FAILED");
-        emit OwnerWithdrawal(to, amount);
     }
 }

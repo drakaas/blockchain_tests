@@ -4,12 +4,24 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const secret = 'hello'
 const secretBytes = ethers.utils.formatBytes32String(secret)
-
+const secretHash = ethers.utils.keccak256(secretBytes)
+const funcds = 10000000
 
 before(async function( ){
-  accounts = await ethers.Get
+  accounts = await ethers.getSigners()
+  owner = accoutns[0]
+  player1 = accounts[1]
+  player2 = accounts[2]
+  guessingGame = await ethers.getContractFactory("GuessingGame")
+  contract = await guessingGame.deploy()
+  await contract.deployed()
 })
 
+describe("Storage", function () {
+
+it("test init game", async function(){
+  const oldBalance = await ethers.provider.
+})
   it("test initial value", async function () {
     const Storage = await ethers.getContractFactory("Storage");
     const storage = await Storage.deploy();
@@ -32,3 +44,6 @@ before(async function( ){
   });
 
 });
+
+
+
