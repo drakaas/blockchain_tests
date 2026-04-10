@@ -74,7 +74,12 @@ before(async function () {
 });
 
 async function liveness() {
-  
+
+
+// do stuff (modify contract state)
+
+
+    
   if (!(await contract.initialized())) return;
 
 
@@ -218,7 +223,13 @@ describe("GuessingGame", function () {
 
 
 
+    //it fih liveness
+
+  
   });
+
+
+  //before
 
   describe("passToken", function () {
 
@@ -277,8 +288,12 @@ describe("GuessingGame", function () {
       expect(await contract.tokenHolder()).to.equal(player1.address);
     });
 
+
+    //liveness
   });
 
+
+  //before
   describe("guess", function () {
 
     it("should revert if contract not initialized", async function () {
@@ -395,6 +410,11 @@ describe("GuessingGame", function () {
       expect(await contract.secretHash()).to.equal(fourthSecretHash);
     });
 
+
+    //liveness
   });
 
+
+
+  //2 derniers etats 
 });
