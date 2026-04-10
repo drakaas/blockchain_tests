@@ -182,32 +182,37 @@ describe("GuessingGame", function () {
       ).to.be.revertedWith("WRONG_GUESS");
     });
 
-    it("if guess was successful: secret updated, balance decreased, player balance increased; owner/tokenHolder/initialized unchanged", async function () {
-      const requested = ethers.utils.parseEther("0.2");
+  it("if guess was successful: secret updated, balance decreased, player balance increased; owner/tokenHolder/initialized unchanged", async function () {
+    const requested = ethers.utils.parseEther("0.5");
 
-      const ownerBefore = await contract.owner();
-      const tokenHolderBefore = await contract.tokenHolder();
-      const initializedBefore = await contract.initialized();
+    const ownerBefore = await contract.owner();
+    const tokenHolderBefore = await contract.tokenHolder();
+    const initializedBefore = await contract.initialized();
 
-      const contractBalBefore = await ethers.provider.getBalance(contract.address);
-      const playerBalBefore = await ethers.provider.getBalance(player1.address);
+    const contractBalBefore = await ethers.provider.getBalance(contract.address);
 
-      const tx = await contract.connect(player1).guess(secret, requested, newSecretHash);
-      const receipt = await tx.wait();
-      const gasPrice = receipt.effectiveGasPrice ?? tx.gasPrice;
-      const gasUsed = receipt.gasUsed.mul(gasPrice);
+    // Execute + assert balances + event
+    await expect(
+      contract.connect(player1).guess(secret, requested, newSecretHash)
+    )
+      .to.changeEtherBalances(
+        [contract.address, player1.address],
+        [requested.mul(-1), requested]
+      )
+      .and.to.emit(contract, "GuessedCorrectly")
+      .withArgs(player1.address, requested, newSecretHash);
 
-      const contractBalAfter = await ethers.provider.getBalance(contract.address);
-      const playerBalAfter = await ethers.provider.getBalance(player1.address);
+    //  Post-state checks
+    const contractBalAfter = await ethers.provider.getBalance(contract.address);
 
-      expect(await contract.secretHash()).to.equal(newSecretHash);
-      expect(contractBalAfter).to.equal(contractBalBefore.sub(requested));
-      expect(playerBalAfter).to.equal(playerBalBefore.add(requested).sub(gasUsed));
+    expect(await contract.secretHash()).to.equal(newSecretHash);
+    expect(contractBalAfter).to.equal(contractBalBefore.sub(requested));
 
-      expect(await contract.owner()).to.equal(ownerBefore);
-      expect(await contract.tokenHolder()).to.equal(tokenHolderBefore);
-      expect(await contract.initialized()).to.equal(initializedBefore);
-    });
+    expect(await contract.owner()).to.equal(ownerBefore);
+    expect(await contract.tokenHolder()).to.equal(tokenHolderBefore);
+    expect(await contract.initialized()).to.equal(initializedBefore);
+  });
+
 
     it("should not allow to guess twice in a row", async function () {
       await expect(
