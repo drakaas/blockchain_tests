@@ -22,7 +22,16 @@ before(async function () {
   await contract.deployed();
 });
 
+/*
+ * 
+before init:
+  should not init again if initialized
+  should not allow to guess
+  should not init with 0
+  should not init with empty secret
+  
 
+ */
 
 describe("GuessingGame", function () {
 
