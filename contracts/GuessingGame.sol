@@ -9,6 +9,7 @@ contract GuessingGame {
     address public tokenHolder;
     bytes32 public secretHash;
     bool public initialized;
+    address public lastGuesser;
 
     event Initialized(address indexed owner, bytes32 indexed secretHash, uint256 balance);
     event TokenHolderSet(address indexed tokenHolder);
@@ -67,8 +68,10 @@ contract GuessingGame {
 
     function passToken(address to) external onlyInitialized onlyTokenHolder {
         require(to != address(0), "INVALID_TO");
+        require(to != tokenHolder, "ALREADY_TOKEN_HOLDER");
         address old = tokenHolder;
         tokenHolder = to;
+        lastGuesser = address(0);
         emit TokenPassed(old, to);
     }
 
@@ -77,12 +80,15 @@ contract GuessingGame {
         onlyInitialized
         onlyTokenHolder
     {
+        require(requestedAmount > 0, "INVALID_AMOUNT");
         require(newSecretHash != bytes32(0), "INVALID_NEW_SECRET_HASH");
+        require(msg.sender != lastGuesser, "NO_CONSECUTIVE_GUESS");
         bytes32 secretBytes = _stringToBytes32(plainSecret);
         require(keccak256(abi.encodePacked(secretBytes)) == secretHash, "WRONG_GUESS");
         require(address(this).balance >= requestedAmount, "INSUFFICIENT_CONTRACT_BALANCE");
 
         secretHash = newSecretHash;
+        lastGuesser = msg.sender;
 
         (bool ok, ) = payable(msg.sender).call{value: requestedAmount}("");
         require(ok, "PAYOUT_FAILED");
