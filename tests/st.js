@@ -73,6 +73,54 @@ before(async function () {
   await contract.deployed();
 });
 
+async function liveness() {
+  
+  if (!(await contract.initialized())) return;
+
+
+  const secretMap = [
+    { plain: secret,       hash: secretHash       },
+    { plain: newSecret,    hash: newSecretHash     },
+    { plain: thirdSecret,  hash: thirdSecretHash   },
+    { plain: fourthSecret, hash: fourthSecretHash  },
+  ];
+
+
+  const drainNextHash = ethers.utils.keccak256(
+    ethers.utils.formatBytes32String("__drain__")
+  );
+
+  let balance = await ethers.provider.getBalance(contract.address);
+
+  let safetyCounter = 0;
+  while (balance.gt(0)) {
+    if (safetyCounter++ > 20) throw new Error("liveness: stuck in drain loop");
+
+    const currentSecretHash = await contract.secretHash();
+    const currentTokenHolder = await contract.tokenHolder();
+    const entry = secretMap.find(e => e.hash === currentSecretHash);
+    if (!entry) throw new Error("liveness: unknown secretHash, cannot proceed");
+    const currentPlain = entry.plain;
+
+    const players = [owner, player1, player2, player3];
+    
+    const holder  = players.find(p => p.address === currentTokenHolder);
+
+    const guesser = players.find(p =>p.address!=owner && p.address !== currentTokenHolder);
+
+    if (holder && guesser && holder.address !== guesser.address) {
+      await contract.connect(holder).passToken(guesser.address);
+    }
+
+    const toDrain = await ethers.provider.getBalance(contract.address);
+    if (toDrain.eq(0)) break;
+
+    await contract.connect(guesser).guess(currentPlain, toDrain, drainNextHash);
+
+    balance = await ethers.provider.getBalance(contract.address);
+  }
+}
+
 describe("GuessingGame", function () {
 
   describe("constructor", function () {
@@ -135,15 +183,7 @@ describe("GuessingGame", function () {
       expect(await ethers.provider.getBalance(contract.address)).to.equal(balanceBefore);
     });
 
-    it("should init correctly and update state", async function () {
-      const oldBalance = await ethers.provider.getBalance(contract.address);
-      await contract.connect(owner).init(secretHash, { value: funds });
-      const newBalance = await ethers.provider.getBalance(contract.address);
-      expect(await contract.initialized()).to.equal(true);
-      expect(await contract.secretHash()).to.equal(secretHash);
-      expect(await contract.tokenHolder()).to.equal(owner.address);
-      expect(newBalance).to.equal(oldBalance.add(funds));
-    });
+
 
     it("should revert if already initialized", async function () {
       await expect(
@@ -164,6 +204,19 @@ describe("GuessingGame", function () {
       expect(await contract.tokenHolder()).to.equal(tokenHolderBefore);
       expect(await ethers.provider.getBalance(contract.address)).to.equal(balanceBefore);
     });
+
+
+     it("should init correctly and update state", async function () {
+      const oldBalance = await ethers.provider.getBalance(contract.address);
+      await contract.connect(owner).init(secretHash, { value: funds });
+      const newBalance = await ethers.provider.getBalance(contract.address);
+      expect(await contract.initialized()).to.equal(true);
+      expect(await contract.secretHash()).to.equal(secretHash);
+      expect(await contract.tokenHolder()).to.equal(owner.address);
+      expect(newBalance).to.equal(oldBalance.add(funds));
+    });
+
+
 
   });
 
