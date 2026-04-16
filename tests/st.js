@@ -424,4 +424,120 @@ describe("GuessingGame", function () {
 
   });
 
+  describe("passToken (cycle 2)", function () {
+
+    before(async function () {
+      contract = await guessingGame.deploy();
+      await contract.deployed();
+      await contract.connect(owner).init(secretHash, { value: funds });
+      await contract.connect(owner).passToken(player1.address);
+
+      const tx = await contract
+        .connect(player1)
+        .guess(secret, ethers.utils.parseEther("0.2"), newSecretHash);
+      await tx.wait();
+    });
+
+    it("should revert if caller is not token holder", async function () {
+      await expect(
+        contract.connect(owner).passToken(player2.address)
+      ).to.be.revertedWith("ONLY_TOKEN_HOLDER");
+    });
+
+    it("should revert with zero address", async function () {
+      await expect(
+        contract.connect(player1).passToken(ethers.constants.AddressZero)
+      ).to.be.revertedWith("INVALID_TO");
+    });
+
+    it("should revert if passing to same address", async function () {
+      await expect(
+        contract.connect(player1).passToken(player1.address)
+      ).to.be.revertedWith("ALREADY_TOKEN_HOLDER");
+    });
+
+    it("should update token holder after pass", async function () {
+      await contract.connect(player1).passToken(player2.address);
+      expect(await contract.tokenHolder()).to.equal(player2.address);
+    });
+
+    it("should revert from old holder after transfer", async function () {
+      await expect(
+        contract.connect(player1).passToken(player3.address)
+      ).to.be.revertedWith("ONLY_TOKEN_HOLDER");
+    });
+
+    it("liveness after passToken (cycle 2)", async function () {
+      await liveness();
+    });
+
+  });
+
+  describe("guess (cycle 2)", function () {
+
+    before(async function () {
+      contract = await guessingGame.deploy();
+      await contract.deployed();
+      await contract.connect(owner).init(secretHash, { value: funds });
+      await contract.connect(owner).passToken(player1.address);
+
+      const tx = await contract
+        .connect(player1)
+        .guess(secret, ethers.utils.parseEther("0.2"), newSecretHash);
+      await tx.wait();
+
+      await contract.connect(player1).passToken(player2.address);
+    });
+
+    it("should revert if caller is not token holder", async function () {
+      await expect(
+        contract.connect(player1).guess(newSecret, ethers.utils.parseEther("0.1"), thirdSecretHash)
+      ).to.be.revertedWith("ONLY_TOKEN_HOLDER");
+    });
+
+    it("should revert if amount is zero", async function () {
+      await expect(
+        contract.connect(player2).guess(newSecret, 0, thirdSecretHash)
+      ).to.be.revertedWith("INVALID_AMOUNT");
+    });
+
+    it("should revert if new secret hash is zero", async function () {
+      await expect(
+        contract.connect(player2).guess(newSecret, ethers.utils.parseEther("0.1"), ethers.constants.HashZero)
+      ).to.be.revertedWith("INVALID_NEW_SECRET_HASH");
+    });
+
+    it("should revert if plain secret is wrong", async function () {
+      await expect(
+        contract.connect(player2).guess("wrongword", ethers.utils.parseEther("0.1"), thirdSecretHash)
+      ).to.be.revertedWith("WRONG_GUESS");
+    });
+
+    it("should pay out player and reset secret on correct guess", async function () {
+      const requested     = ethers.utils.parseEther("0.2");
+      const balanceBefore = await ethers.provider.getBalance(player2.address);
+
+      const contractBalanceBefore = await ethers.provider.getBalance(contract.address);
+
+
+      const tx = await contract.connect(player2).guess(newSecret, requested, thirdSecretHash);
+      await tx.wait();
+
+      const balanceAfter = await ethers.provider.getBalance(player2.address);
+      expect(balanceAfter).to.be.gt(balanceBefore);
+      expect(await contract.secretHash()).to.equal(thirdSecretHash);
+    });
+
+    it("should revert consecutive guess by same player", async function () {
+      await expect(
+        contract.connect(player2).guess(thirdSecret, ethers.utils.parseEther("0.1"), fourthSecretHash)
+      ).to.be.revertedWith("NO_CONSECUTIVE_GUESS");
+    });
+
+    it("liveness after guess (cycle 2)", async function () {
+      await liveness();
+    });
+
+  });
+
 });
