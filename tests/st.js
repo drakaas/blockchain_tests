@@ -75,10 +75,6 @@ before(async function () {
 
 async function liveness() {
 
-
-// do stuff (modify contract state)
-
-
     
   if (!(await contract.initialized())) return;
 
@@ -140,7 +136,16 @@ describe("GuessingGame", function () {
 
   });
 
+  it("liveness before init", async function () {
+    await liveness();
+  });
+
   describe("init", function () {
+
+    beforeEach(async function () {
+      contract = await guessingGame.deploy();
+      await contract.deployed();
+    });
 
     it("should revert if called by non-owner", async function () {
       await expect(
@@ -188,15 +193,15 @@ describe("GuessingGame", function () {
       expect(await ethers.provider.getBalance(contract.address)).to.equal(balanceBefore);
     });
 
-
-
     it("should revert if already initialized", async function () {
+      await contract.connect(owner).init(secretHash, { value: funds });
       await expect(
         contract.connect(owner).init(secretHash, { value: funds })
       ).to.be.revertedWith("ALREADY_INITIALIZED");
     });
 
     it("should not change state if called again after initialized", async function () {
+      await contract.connect(owner).init(secretHash, { value: funds });
       const initializedBefore = await contract.initialized();
       const secretHashBefore  = await contract.secretHash();
       const tokenHolderBefore = await contract.tokenHolder();
@@ -210,8 +215,7 @@ describe("GuessingGame", function () {
       expect(await ethers.provider.getBalance(contract.address)).to.equal(balanceBefore);
     });
 
-
-     it("should init correctly and update state", async function () {
+    it("should init correctly and update state", async function () {
       const oldBalance = await ethers.provider.getBalance(contract.address);
       await contract.connect(owner).init(secretHash, { value: funds });
       const newBalance = await ethers.provider.getBalance(contract.address);
@@ -221,17 +225,19 @@ describe("GuessingGame", function () {
       expect(newBalance).to.equal(oldBalance.add(funds));
     });
 
+    after(async function () {
+      await liveness();
+    });
 
-
-    //it fih liveness
-
-  
   });
 
-
-  //before
-
   describe("passToken", function () {
+
+    before(async function () {
+      contract = await guessingGame.deploy();
+      await contract.deployed();
+      await contract.connect(owner).init(secretHash, { value: funds });
+    });
 
     it("should revert if contract not initialized", async function () {
       const fresh = await (await ethers.getContractFactory("GuessingGame")).deploy();
@@ -267,15 +273,16 @@ describe("GuessingGame", function () {
       ).to.be.revertedWith("ALREADY_TOKEN_HOLDER");
     });
 
-    it("should update token holder after pass", async function () {
-      await contract.connect(owner).passToken(player1.address);
-      expect(await contract.tokenHolder()).to.equal(player1.address);
-    });
 
     it("should revert from old holder after transfer", async function () {
       await expect(
         contract.connect(owner).passToken(player2.address)
       ).to.be.revertedWith("ONLY_TOKEN_HOLDER");
+    });
+
+    it("should update token holder after pass", async function () {
+      await contract.connect(owner).passToken(player1.address);
+      expect(await contract.tokenHolder()).to.equal(player1.address);
     });
 
     it("should allow new token holder to pass token to player2", async function () {
@@ -288,13 +295,20 @@ describe("GuessingGame", function () {
       expect(await contract.tokenHolder()).to.equal(player1.address);
     });
 
+    after(async function () {
+      await liveness();
+    });
 
-    //liveness
   });
 
-
-  //before
   describe("guess", function () {
+
+    before(async function () {
+      contract = await guessingGame.deploy();
+      await contract.deployed();
+      await contract.connect(owner).init(secretHash, { value: funds });
+      await contract.connect(owner).passToken(player1.address);
+    });
 
     it("should revert if contract not initialized", async function () {
       const fresh = await (await ethers.getContractFactory("GuessingGame")).deploy();
@@ -410,11 +424,10 @@ describe("GuessingGame", function () {
       expect(await contract.secretHash()).to.equal(fourthSecretHash);
     });
 
+    after(async function () {
+      await liveness();
+    });
 
-    //liveness
   });
 
-
-
-  //2 derniers etats 
 });
