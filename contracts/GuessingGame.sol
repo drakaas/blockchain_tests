@@ -49,9 +49,10 @@ contract GuessingGame {
         secretHash = initialSecretHash;
         initialized = true;
         tokenHolder = owner;
+        lastGuesser = address(0);
         emit Initialized(owner, secretHash, address(this).balance);
     }
-lastGuesser = msg
+
     function setTokenHolder(address holder) external onlyOwner {
         require(holder != address(0), "INVALID_TOKEN_HOLDER");
         tokenHolder = holder;
@@ -87,4 +88,4 @@ lastGuesser = msg
 
         emit GuessedCorrectly(msg.sender, requestedAmount, newSecretHash);
     }
-}string calldata plainSecret, uint256 requestedAmount, bytes32 newSecretHash
+}
